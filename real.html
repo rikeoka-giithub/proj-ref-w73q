@@ -344,7 +344,7 @@
   <div class="button-area">
     <button class="btn-seance" id="btnSeance">交霊術を開始する</button>
     <br>
-    <a href="album.html" class="btn-album">イベントアルバム</a>
+    <a href="album.html" class="btn-album" id="btnAlbum">イベントアルバム</a>
   </div>
 
   <!-- Sensor HUD (shown during detection) -->
@@ -814,6 +814,7 @@ function resetToIdle() {
   document.getElementById('candleGlow').style.display = '';
   document.getElementById('btnBack').style.display = 'none';
   document.getElementById('btnSeance').style.display = 'inline-block';
+  document.getElementById('btnAlbum').style.display = 'inline-block';
   if (candleAudio) { candleAudio.volume = 1.0; candleAudio.play(); }
 }
 
@@ -826,6 +827,7 @@ const btnBack = document.getElementById('btnBack');
 btnSeance.addEventListener('click', () => {
   btnSeance.style.display = 'none';
   btnBack.style.display = 'block';
+  document.getElementById('btnAlbum').style.display = 'none';
 
   requestSensorPermission()
     .then(() => {
@@ -845,6 +847,7 @@ btnBack.addEventListener('click', () => {
   document.getElementById('candleGlow').style.display = '';
   btnBack.style.display = 'none';
   btnSeance.style.display = 'inline-block';
+  document.getElementById('btnAlbum').style.display = 'inline-block';
 });
 </script>
 </body>
