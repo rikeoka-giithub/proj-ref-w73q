@@ -436,9 +436,10 @@ const GHOST_DISPLAY_TIME = 4000;  // ghost shows for 4 seconds
 let scareTimer = null;
 let intensityInterval = null;
 
-const NOISE_DELAY = 90000;        // 1.5 minutes - horror noise
+const RANDOM_NOISE_START = 60000; // 1 minute - start random noise
 let noiseTimer = null;
-let noiseInterval = null;
+let randomNoiseTimer = null;
+let randomNoiseActive = false;
 
 // ============================================================
 //  HORROR NOISE SYSTEM (Canvas-based static + glitch + invert)
@@ -532,28 +533,45 @@ function fireNoiseBlast(duration, intensity, withInvert) {
   });
 }
 
-function startNoiseSequence() {
-  noiseTimer = setTimeout(() => {
-    // 5 blasts escalating in intensity over ~5 seconds
-    const schedule = [
-      { delay: 0,    dur: 250,  intensity: 0.5, invert: false },
-      { delay: 900,  dur: 300,  intensity: 0.65, invert: false },
-      { delay: 2000, dur: 400,  intensity: 0.8, invert: true  },
-      { delay: 3200, dur: 350,  intensity: 0.9, invert: true  },
-      { delay: 4500, dur: 500,  intensity: 1.0, invert: true  },
-    ];
-
-    schedule.forEach(({ delay, dur, intensity, invert }) => {
+function scheduleRandomNoise() {
+  if (!randomNoiseActive) return;
+  // Random interval: 5~15 seconds between bursts
+  const nextDelay = 5000 + Math.random() * 10000;
+  randomNoiseTimer = setTimeout(() => {
+    if (!randomNoiseActive) return;
+    // Random intensity and style each time
+    const intensity = 0.4 + Math.random() * 0.5;
+    const duration = 150 + Math.random() * 350;
+    const withInvert = Math.random() < 0.35;
+    fireNoiseBlast(duration, intensity, withInvert);
+    // Sometimes fire a quick double-burst
+    if (Math.random() < 0.3) {
       setTimeout(() => {
-        fireNoiseBlast(dur, intensity, invert);
-      }, delay);
-    });
-  }, NOISE_DELAY);
+        if (randomNoiseActive) {
+          fireNoiseBlast(100 + Math.random() * 200, intensity * 0.8, false);
+        }
+      }, 300 + Math.random() * 400);
+    }
+    // Schedule next one
+    scheduleRandomNoise();
+  }, nextDelay);
+}
+
+function startNoiseSequence() {
+  // Start random noise at 1 minute mark
+  noiseTimer = setTimeout(() => {
+    randomNoiseActive = true;
+    // Kick off with an initial burst to signal something is wrong
+    fireNoiseBlast(300, 0.6, false);
+    scheduleRandomNoise();
+  }, RANDOM_NOISE_START);
 }
 
 function cancelNoiseSequence() {
   if (noiseTimer) { clearTimeout(noiseTimer); noiseTimer = null; }
+  if (randomNoiseTimer) { clearTimeout(randomNoiseTimer); randomNoiseTimer = null; }
   if (noiseAnimFrame) { cancelAnimationFrame(noiseAnimFrame); noiseAnimFrame = null; }
+  randomNoiseActive = false;
   noiseOverlay.classList.remove('active');
   invertFlash.classList.remove('active');
   hideGlitchBars();
