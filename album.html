@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>イベントアルバム - 理系のオカルト研 × GMK</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;700;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    width: 100%;
+    min-height: 100vh;
+    background: #0a0a0a;
+    font-family: 'Noto Serif JP', serif;
+    -webkit-tap-highlight-color: transparent;
+    color: #c8a064;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    position: relative;
+    width: 100%;
+    padding: max(3vh, 20px) 16px max(2vh, 16px);
+    background: linear-gradient(180deg, #0f0804 0%, #0a0a0a 100%);
+    text-align: center;
+    border-bottom: 1px solid rgba(200,130,50,0.15);
+  }
+
+  /* ===== Collab Icons ===== */
+  .collab-icons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .collab-icon {
+    width: clamp(56px, 16vw, 80px);
+    height: clamp(56px, 16vw, 80px);
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(200,130,50,0.3);
+    box-shadow: 0 0 15px rgba(255,140,40,0.1);
+  }
+  .collab-x {
+    font-size: clamp(18px, 5vw, 28px);
+    font-weight: 900;
+    color: rgba(200,160,100,0.4);
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== Title ===== */
+  .event-title {
+    font-size: clamp(15px, 4.2vw, 22px);
+    font-weight: 900;
+    color: #e8c47a;
+    text-shadow: 0 0 12px rgba(255,150,50,0.3);
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+  }
+  .event-title .title-top {
+    display: block;
+    font-size: clamp(11px, 3vw, 15px);
+    font-weight: 700;
+    color: rgba(200,160,100,0.5);
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .event-title .title-main {
+    display: block;
+  }
+  .event-title .title-date {
+    display: block;
+    font-size: clamp(12px, 3.2vw, 16px);
+    font-weight: 700;
+    color: rgba(200,160,100,0.6);
+    margin-top: 6px;
+    letter-spacing: 0.12em;
+  }
+
+  /* ===== Decorative line ===== */
+  .deco-line {
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(200,130,50,0.4), transparent);
+    margin: 14px auto 0;
+  }
+
+  /* ===== Photo Grid ===== */
+  .album-section {
+    padding: 20px 12px max(4vh, 30px);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .album-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .album-item {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(30,20,10,0.6);
+    cursor: pointer;
+  }
+  .album-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .album-item:active img {
+    transform: scale(1.05);
+  }
+
+  /* ===== Empty state (before photos are uploaded) ===== */
+  .album-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(200,160,100,0.3);
+    font-size: clamp(13px, 3.5vw, 16px);
+    letter-spacing: 0.1em;
+    line-height: 2;
+  }
+
+  /* ===== Lightbox ===== */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img {
+    max-width: 95%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 2px;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: max(2vh, 12px);
+    right: max(2vw, 12px);
+    background: none;
+    border: none;
+    color: rgba(200,160,100,0.6);
+    font-size: 28px;
+    cursor: pointer;
+    padding: 8px;
+    line-height: 1;
+  }
+
+  /* ===== Back link ===== */
+  .back-link {
+    display: block;
+    text-align: center;
+    padding: 20px;
+    color: rgba(200,160,100,0.35);
+    font-size: clamp(12px, 3vw, 14px);
+    text-decoration: none;
+    letter-spacing: 0.1em;
+  }
+  .back-link:hover {
+    color: rgba(200,160,100,0.6);
+  }
+</style>
+</head>
+<body>
+
+<!-- Lightbox for full-size photo viewing -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <img src="" alt="" id="lightboxImg">
+</div>
+
+<header class="header">
+  <!-- Collab icons -->
+  <div class="collab-icons">
+    <img src="icon_rikeoka.png" alt="理系のオカルト研" class="collab-icon">
+    <span class="collab-x">×</span>
+    <img src="icon_gmk.png" alt="GMK" class="collab-icon">
+  </div>
+
+  <!-- Event title -->
+  <div class="event-title">
+    <span class="title-top">1日店長！</span>
+    <span class="title-main">理系のオカルト研 in GMK</span>
+    <span class="title-date">2026/02/28（土）</span>
+  </div>
+
+  <div class="deco-line"></div>
+</header>
+
+<section class="album-section">
+  <!--
+    =====================================================
+    写真の追加方法:
+    1. 写真ファイル（jpg/png）を photos/ フォルダに配置
+    2. 以下のように <div class="album-item"> を追加:
+
+    <div class="album-item">
+      <img src="photos/001.jpg" alt="">
+    </div>
+
+    写真が追加されたら .album-empty を削除してください
+    =====================================================
+  -->
+  <div class="album-grid" id="albumGrid">
+    <!-- ===== ここに写真を追加 ===== -->
+
+    <!-- 写真がまだない時の表示 -->
+    <div class="album-empty" id="albumEmpty">
+      イベント写真は後日追加されます<br>
+      お楽しみに！
+    </div>
+  </div>
+</section>
+
+<a href="real.html" class="back-link">← ロウソク検証に戻る</a>
+
+<script>
+// ============================================================
+//  LIGHTBOX
+// ============================================================
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+const lightboxClose = document.getElementById('lightboxClose');
+
+document.getElementById('albumGrid').addEventListener('click', (e) => {
+  const item = e.target.closest('.album-item');
+  if (!item) return;
+  const img = item.querySelector('img');
+  if (!img) return;
+  lightboxImg.src = img.src;
+  lightbox.classList.add('active');
+});
+
+lightbox.addEventListener('click', (e) => {
+  if (e.target === lightboxImg) return;
+  lightbox.classList.remove('active');
+});
+lightboxClose.addEventListener('click', () => {
+  lightbox.classList.remove('active');
+});
+</script>
+</body>
+</html>
