@@ -176,34 +176,33 @@
   .noise-overlay {
     position: fixed; inset: 0; z-index: 500;
     pointer-events: none; opacity: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(255,255,255,0.03) 2px,
-      rgba(255,255,255,0.03) 4px
-    );
-    mix-blend-mode: overlay;
+    transition: opacity 0.05s;
   }
-  .noise-overlay.flash {
-    animation: noiseFlash 0.15s ease-out forwards;
+  .noise-overlay canvas {
+    width: 100%; height: 100%;
   }
-  @keyframes noiseFlash {
-    0%   { opacity: 1; background-position: 0 0; }
-    25%  { opacity: 0.8; background-position: 10px -5px; }
-    50%  { opacity: 0.6; background-position: -5px 10px; }
-    75%  { opacity: 0.3; background-position: 8px -8px; }
-    100% { opacity: 0; background-position: 0 0; }
+  .noise-overlay.active {
+    opacity: 1;
   }
-  .noise-overlay.flash-strong {
-    animation: noiseFlashStrong 0.25s ease-out forwards;
+
+  /* Glitch bar - horizontal slice that shifts */
+  .glitch-bar {
+    position: fixed; left: 0; right: 0; z-index: 501;
+    height: 0; pointer-events: none;
+    background: rgba(255,0,0,0.15);
+    mix-blend-mode: screen;
+    transition: none;
   }
-  @keyframes noiseFlashStrong {
-    0%   { opacity: 1; filter: invert(1) brightness(2); }
-    15%  { opacity: 0.9; filter: invert(0) brightness(1); }
-    30%  { opacity: 0.7; filter: invert(1) brightness(1.5); }
-    50%  { opacity: 0.4; filter: invert(0) brightness(1); }
-    100% { opacity: 0; filter: none; }
+
+  /* Full-screen color inversion flash */
+  .invert-flash {
+    position: fixed; inset: 0; z-index: 499;
+    pointer-events: none; opacity: 0;
+    background: #fff;
+    mix-blend-mode: difference;
+  }
+  .invert-flash.active {
+    opacity: 1;
   }
 </style>
 </head>
@@ -220,7 +219,10 @@
 </div>
 
 <!-- Horror noise overlay -->
-<div class="noise-overlay" id="noiseOverlay"></div>
+<div class="noise-overlay" id="noiseOverlay"><canvas id="noiseCanvas"></canvas></div>
+<div class="invert-flash" id="invertFlash"></div>
+<div class="glitch-bar" id="glitchBar1"></div>
+<div class="glitch-bar" id="glitchBar2"></div>
 
 <!-- Ghost scare overlay -->
 <div class="ghost-overlay" id="ghostOverlay">
@@ -438,28 +440,112 @@ const NOISE_DELAY = 90000;        // 1.5 minutes - horror noise
 let noiseTimer = null;
 let noiseInterval = null;
 
-function startNoiseSequence() {
-  const noiseOverlay = document.getElementById('noiseOverlay');
+// ============================================================
+//  HORROR NOISE SYSTEM (Canvas-based static + glitch + invert)
+// ============================================================
+const noiseOverlay = document.getElementById('noiseOverlay');
+const noiseCanvas = document.getElementById('noiseCanvas');
+const noiseCtx = noiseCanvas.getContext('2d');
+const invertFlash = document.getElementById('invertFlash');
+const glitchBar1 = document.getElementById('glitchBar1');
+const glitchBar2 = document.getElementById('glitchBar2');
 
+function resizeNoiseCanvas() {
+  // Low-res for performance + chunky scary look
+  noiseCanvas.width = Math.floor(window.innerWidth / 4);
+  noiseCanvas.height = Math.floor(window.innerHeight / 4);
+}
+resizeNoiseCanvas();
+window.addEventListener('resize', resizeNoiseCanvas);
+
+function drawStaticNoise(intensity) {
+  const w = noiseCanvas.width, h = noiseCanvas.height;
+  const imgData = noiseCtx.createImageData(w, h);
+  const d = imgData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = Math.random() * 255;
+    // Add reddish tint for horror feel
+    const isRed = Math.random() < 0.15 * intensity;
+    d[i]     = isRed ? Math.min(255, v + 80) : v; // R
+    d[i + 1] = isRed ? v * 0.3 : v;               // G
+    d[i + 2] = isRed ? v * 0.2 : v;               // B
+    d[i + 3] = Math.floor(180 * intensity + Math.random() * 75 * intensity); // A
+  }
+  noiseCtx.putImageData(imgData, 0, 0);
+}
+
+function showGlitchBars() {
+  [glitchBar1, glitchBar2].forEach(bar => {
+    bar.style.top = (Math.random() * 100) + '%';
+    bar.style.height = (2 + Math.random() * 15) + 'vh';
+    bar.style.transform = `translateX(${(Math.random() - 0.5) * 30}px)`;
+    bar.style.background = Math.random() < 0.5
+      ? `rgba(255,${Math.floor(Math.random()*50)},${Math.floor(Math.random()*30)},${0.15 + Math.random()*0.2})`
+      : `rgba(0,${Math.floor(Math.random()*80)},${Math.floor(Math.random()*60)},${0.1 + Math.random()*0.15})`;
+  });
+}
+
+function hideGlitchBars() {
+  [glitchBar1, glitchBar2].forEach(bar => { bar.style.height = '0'; });
+}
+
+let noiseAnimFrame = null;
+function runNoiseAnimation(duration, intensity, onDone) {
+  noiseOverlay.classList.add('active');
+  showGlitchBars();
+  const start = performance.now();
+  function frame(now) {
+    const elapsed = now - start;
+    if (elapsed > duration) {
+      noiseOverlay.classList.remove('active');
+      hideGlitchBars();
+      if (onDone) onDone();
+      return;
+    }
+    // Flicker the noise rapidly
+    drawStaticNoise(intensity * (0.6 + Math.random() * 0.4));
+    // Randomly shift glitch bars
+    if (Math.random() < 0.3) showGlitchBars();
+    noiseAnimFrame = requestAnimationFrame(frame);
+  }
+  noiseAnimFrame = requestAnimationFrame(frame);
+}
+
+function fireNoiseBlast(duration, intensity, withInvert) {
+  // Flame spike
+  const origIntensity = flameIntensity;
+  flameIntensity = 2.5 + Math.random() * 1.5;
+
+  // Inversion flash
+  if (withInvert) {
+    invertFlash.classList.add('active');
+    setTimeout(() => { invertFlash.classList.remove('active'); }, 80 + Math.random() * 70);
+    // Double-flash
+    setTimeout(() => {
+      invertFlash.classList.add('active');
+      setTimeout(() => { invertFlash.classList.remove('active'); }, 50);
+    }, 120 + Math.random() * 80);
+  }
+
+  runNoiseAnimation(duration, intensity, () => {
+    flameIntensity = origIntensity;
+  });
+}
+
+function startNoiseSequence() {
   noiseTimer = setTimeout(() => {
-    // Fire 4 noise flashes over ~3 seconds, escalating intensity
+    // 5 blasts escalating in intensity over ~5 seconds
     const schedule = [
-      { delay: 0,    cls: 'flash',        dur: 200  },
-      { delay: 800,  cls: 'flash',        dur: 200  },
-      { delay: 1600, cls: 'flash-strong', dur: 300  },
-      { delay: 2800, cls: 'flash-strong', dur: 300  },
+      { delay: 0,    dur: 250,  intensity: 0.5, invert: false },
+      { delay: 900,  dur: 300,  intensity: 0.65, invert: false },
+      { delay: 2000, dur: 400,  intensity: 0.8, invert: true  },
+      { delay: 3200, dur: 350,  intensity: 0.9, invert: true  },
+      { delay: 4500, dur: 500,  intensity: 1.0, invert: true  },
     ];
 
-    schedule.forEach(({ delay, cls, dur }) => {
+    schedule.forEach(({ delay, dur, intensity, invert }) => {
       setTimeout(() => {
-        noiseOverlay.className = 'noise-overlay ' + cls;
-        // Also briefly spike the flame
-        const origIntensity = flameIntensity;
-        flameIntensity = 2.0 + Math.random();
-        setTimeout(() => {
-          noiseOverlay.className = 'noise-overlay';
-          flameIntensity = origIntensity;
-        }, dur);
+        fireNoiseBlast(dur, intensity, invert);
       }, delay);
     });
   }, NOISE_DELAY);
@@ -467,7 +553,10 @@ function startNoiseSequence() {
 
 function cancelNoiseSequence() {
   if (noiseTimer) { clearTimeout(noiseTimer); noiseTimer = null; }
-  document.getElementById('noiseOverlay').className = 'noise-overlay';
+  if (noiseAnimFrame) { cancelAnimationFrame(noiseAnimFrame); noiseAnimFrame = null; }
+  noiseOverlay.classList.remove('active');
+  invertFlash.classList.remove('active');
+  hideGlitchBars();
 }
 
 function startScareSequence() {
