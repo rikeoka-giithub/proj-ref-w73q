@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ロウソク検証 - 理系のオカルト研</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Noto Serif JP', serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .container {
+    position: relative;
+    width: 100%; height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    background: radial-gradient(ellipse at 50% 60%, #1a0a00 0%, #0a0505 40%, #000000 100%);
+  }
+
+  .fog {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(60,30,30,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(40,20,40,0.10) 0%, transparent 50%);
+    animation: fogDrift 12s ease-in-out infinite alternate;
+    pointer-events: none; z-index: 1;
+  }
+  @keyframes fogDrift {
+    0%   { opacity: 0.3; transform: translateX(-10px); }
+    100% { opacity: 0.7; transform: translateX(10px); }
+  }
+
+  .particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+  .particle {
+    position: absolute; width: 2px; height: 2px;
+    background: rgba(255, 180, 80, 0.4); border-radius: 50%;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(100vh) scale(1); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-10vh) scale(0.3); opacity: 0; }
+  }
+
+  .title-area { position: relative; z-index: 10; text-align: center; padding-top: max(3vh, 20px); }
+  .title-main {
+    font-size: clamp(28px, 7vw, 52px); font-weight: 900; color: #e8c47a;
+    text-shadow: 0 0 20px rgba(255,150,50,0.6), 0 0 60px rgba(255,100,20,0.3), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 0.15em; animation: titleFlicker 4s ease-in-out infinite;
+  }
+  @keyframes titleFlicker {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.92; } 52% { opacity: 0.85; } 54% { opacity: 0.95; }
+  }
+  .title-sub {
+    font-size: clamp(11px, 2.8vw, 16px); color: rgba(200,160,100,0.5);
+    letter-spacing: 0.3em; margin-top: 6px; font-weight: 700;
+  }
+
+  .candle-area {
+    position: relative; z-index: 10; flex: 1;
+    display: flex; align-items: center; justify-content: center; width: 100%;
+  }
+  #candleCanvas { display: block; max-width: 100%; max-height: 100%; }
+
+  .candle-glow {
+    position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 120px;
+    background: radial-gradient(ellipse, rgba(255,140,40,0.12) 0%, transparent 70%);
+    border-radius: 50%; animation: glowPulse 3s ease-in-out infinite;
+    pointer-events: none; z-index: 5;
+  }
+  @keyframes glowPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+    50%      { transform: translateX(-50%) scale(1.15); opacity: 1; }
+  }
+
+  .button-area { position: relative; z-index: 10; padding-bottom: max(4vh, 24px); text-align: center; }
+  .btn-seance {
+    position: relative; display: inline-block; padding: 16px 40px;
+    font-family: 'Noto Serif JP', serif; font-size: clamp(16px, 4vw, 22px); font-weight: 700;
+    color: #f0d8a0;
+    background: linear-gradient(180deg, rgba(80,30,10,0.9) 0%, rgba(40,10,5,0.95) 100%);
+    border: 1px solid rgba(200,130,50,0.4); border-radius: 4px; cursor: pointer;
+    letter-spacing: 0.2em; text-shadow: 0 0 12px rgba(255,150,50,0.5);
+    box-shadow: 0 0 20px rgba(255,100,20,0.15), inset 0 1px 0 rgba(255,200,100,0.1);
+    transition: all 0.3s ease; overflow: hidden;
+  }
+  .btn-seance::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,150,50,0.08) 0%, transparent 50%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .btn-seance:hover::before, .btn-seance:active::before { opacity: 1; }
+  .btn-seance:active {
+    transform: scale(0.97);
+    box-shadow: 0 0 30px rgba(255,100,20,0.3), inset 0 1px 0 rgba(255,200,100,0.15);
+  }
+  .btn-seance::after {
+    content: ''; position: absolute; inset: -2px; border-radius: 6px;
+    background: linear-gradient(45deg, rgba(255,120,30,0.3), transparent, rgba(255,120,30,0.3));
+    z-index: -1; animation: borderGlow 3s ease-in-out infinite;
+  }
+  @keyframes borderGlow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* Back button */
+  .btn-back {
+    display: none; position: fixed; top: max(2vh, 12px); left: max(2vw, 12px); z-index: 100;
+    background: rgba(40,20,10,0.7); border: 1px solid rgba(200,130,50,0.3);
+    color: rgba(200,160,100,0.6); font-family: 'Noto Serif JP', serif;
+    font-size: 14px; padding: 8px 14px; border-radius: 4px; cursor: pointer; letter-spacing: 0.1em;
+  }
+
+  /* Audio start overlay */
+  .audio-prompt {
+    position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: opacity 0.8s ease;
+  }
+  .audio-prompt.hidden { opacity: 0; pointer-events: none; }
+  .audio-prompt-icon { font-size: 48px; margin-bottom: 20px; animation: promptPulse 2s ease-in-out infinite; }
+  @keyframes promptPulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
+  .audio-prompt-text { font-family: 'Noto Serif JP', serif; font-size: clamp(14px, 4vw, 20px); color: rgba(200,160,100,0.8); letter-spacing: 0.15em; }
+  .audio-prompt-sub { font-family: 'Noto Serif JP', serif; font-size: clamp(10px, 2.5vw, 13px); color: rgba(200,160,100,0.35); margin-top: 10px; letter-spacing: 0.1em; }
+
+  /* ===== Ghost scare overlay ===== */
+  .ghost-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: #000; display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+  }
+  .ghost-overlay.active { display: flex; }
+  .ghost-overlay img {
+    max-width: 100%; max-height: 80vh; object-fit: contain;
+    animation: ghostAppear 0.3s ease-out forwards;
+  }
+  @keyframes ghostAppear {
+    0%   { transform: scale(1.8) translateY(30px); opacity: 0; filter: brightness(0); }
+    40%  { transform: scale(1.15); opacity: 1; filter: brightness(1.5); }
+    100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  }
+  /* Screen flash */
+  .ghost-overlay::before {
+    content: ''; position: absolute; inset: 0;
+    background: white; animation: screenFlash 0.4s ease-out forwards; pointer-events: none; z-index: -1;
+  }
+  @keyframes screenFlash {
+    0%   { opacity: 0.9; }
+    100% { opacity: 0; }
+  }
+  /* Ghost image shake */
+  .ghost-shake {
+    animation: ghostShake 0.1s infinite;
+  }
+  @keyframes ghostShake {
+    0%  { transform: translate(2px, -1px); }
+    25% { transform: translate(-2px, 2px); }
+    50% { transform: translate(1px, -2px); }
+    75% { transform: translate(-1px, 1px); }
+    100%{ transform: translate(2px, -1px); }
+  }
+
+  /* ===== Horror noise overlay ===== */
+  .noise-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    pointer-events: none; opacity: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.03) 2px,
+      rgba(255,255,255,0.03) 4px
+    );
+    mix-blend-mode: overlay;
+  }
+  .noise-overlay.flash {
+    animation: noiseFlash 0.15s ease-out forwards;
+  }
+  @keyframes noiseFlash {
+    0%   { opacity: 1; background-position: 0 0; }
+    25%  { opacity: 0.8; background-position: 10px -5px; }
+    50%  { opacity: 0.6; background-position: -5px 10px; }
+    75%  { opacity: 0.3; background-position: 8px -8px; }
+    100% { opacity: 0; background-position: 0 0; }
+  }
+  .noise-overlay.flash-strong {
+    animation: noiseFlashStrong 0.25s ease-out forwards;
+  }
+  @keyframes noiseFlashStrong {
+    0%   { opacity: 1; filter: invert(1) brightness(2); }
+    15%  { opacity: 0.9; filter: invert(0) brightness(1); }
+    30%  { opacity: 0.7; filter: invert(1) brightness(1.5); }
+    50%  { opacity: 0.4; filter: invert(0) brightness(1); }
+    100% { opacity: 0; filter: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Preload ghost image -->
+<link rel="preload" href="ghost.png" as="image">
+
+<!-- Audio start overlay -->
+<div class="audio-prompt" id="audioPrompt">
+  <div class="audio-prompt-icon">🕯️</div>
+  <div class="audio-prompt-text">画面をタップして開始</div>
+  <div class="audio-prompt-sub">音声が流れます</div>
+</div>
+
+<!-- Horror noise overlay -->
+<div class="noise-overlay" id="noiseOverlay"></div>
+
+<!-- Ghost scare overlay -->
+<div class="ghost-overlay" id="ghostOverlay">
+  <img src="ghost.png" alt="" id="ghostImg">
+</div>
+
+<div class="container">
+  <button class="btn-back" id="btnBack">✕ 戻る</button>
+  <div class="fog"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="title-area">
+    <h1 class="title-main">ロウソク検証</h1>
+    <div class="title-sub">理系のオカルト研</div>
+  </div>
+
+  <div class="candle-area">
+    <div class="candle-glow" id="candleGlow"></div>
+    <canvas id="candleCanvas"></canvas>
+  </div>
+
+  <div class="button-area">
+    <button class="btn-seance" id="btnSeance">交霊術を開始する</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  PARTICLES
+// ============================================================
+(function initParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (8 + Math.random() * 12) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+    container.appendChild(p);
+  }
+})();
+
+// ============================================================
+//  CANDLE RENDERING (Canvas 2D)
+// ============================================================
+const canvas = document.getElementById('candleCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, candleX, candleBaseY, candleW, candleH, wickTop;
+let flameTime = 0;
+let audioStarted = false;
+
+// Flame intensity: 1.0 = normal, ramps up during scare sequence
+let flameIntensity = 1.0;
+let flameAlive = true;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  candleW = Math.min(W * 0.12, 50);
+  candleH = Math.min(H * 0.38, 200);
+  candleX = W / 2;
+  candleBaseY = H * 0.75;
+  wickTop = candleBaseY - candleH;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function noise(t) {
+  return Math.sin(t * 2.1) * 0.3 + Math.sin(t * 5.3) * 0.2 + Math.sin(t * 11.7) * 0.15 + Math.sin(t * 23.1) * 0.1;
+}
+
+function drawCandle() {
+  const bodyTop = wickTop + 8;
+  const grad = ctx.createLinearGradient(candleX - candleW/2, bodyTop, candleX + candleW/2, bodyTop);
+  grad.addColorStop(0, '#d4c4a0'); grad.addColorStop(0.3, '#f5ead0');
+  grad.addColorStop(0.6, '#f0e0c0'); grad.addColorStop(1, '#b0a080');
+
+  ctx.beginPath();
+  ctx.moveTo(candleX - candleW/2, bodyTop);
+  ctx.lineTo(candleX - candleW/2, candleBaseY);
+  ctx.quadraticCurveTo(candleX - candleW/2, candleBaseY + 4, candleX, candleBaseY + 4);
+  ctx.quadraticCurveTo(candleX + candleW/2, candleBaseY + 4, candleX + candleW/2, candleBaseY);
+  ctx.lineTo(candleX + candleW/2, bodyTop);
+  const meltA = Math.sin(flameTime * 0.7) * 2;
+  const meltB = Math.cos(flameTime * 0.5) * 1.5;
+  ctx.quadraticCurveTo(candleX + candleW * 0.25, bodyTop - 3 + meltA, candleX, bodyTop - 1 + meltB);
+  ctx.quadraticCurveTo(candleX - candleW * 0.25, bodyTop - 3 - meltA, candleX - candleW/2, bodyTop);
+  ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  const dripY = bodyTop + candleH * 0.2;
+  ctx.beginPath();
+  ctx.ellipse(candleX + candleW/2 + 1, dripY, 3, 8 + Math.sin(flameTime) * 1, 0.1, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(230,215,180,0.7)'; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(candleX, bodyTop);
+  ctx.quadraticCurveTo(candleX + noise(flameTime * 3) * 2, wickTop + 4, candleX, wickTop);
+  ctx.strokeStyle = '#2a2015'; ctx.lineWidth = 1.8; ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(candleX, wickTop, 2, 0, Math.PI * 2);
+  ctx.fillStyle = flameAlive ? '#ff8020' : '#2a2015'; ctx.fill();
+}
+
+function drawFlame(time) {
+  if (!flameAlive) return;
+
+  const baseX = candleX;
+  const baseY = wickTop;
+  const fi = flameIntensity;
+  const flicker = noise(time * 4 * fi);
+  const flicker2 = noise(time * 6 * fi + 100);
+  const swayX = flicker * 8 * fi;
+  const swayX2 = flicker2 * 5 * fi;
+
+  const flameH = (60 + noise(time * 3 * fi) * 14) * (0.7 + fi * 0.3);
+  const flameW = (20 + noise(time * 5 * fi + 50) * 5) * (0.7 + fi * 0.3);
+
+  const glowGrad = ctx.createRadialGradient(
+    baseX + swayX * 0.5, baseY - flameH * 0.5, 0,
+    baseX, baseY - flameH * 0.3, flameH * 1.5
+  );
+  glowGrad.addColorStop(0, 'rgba(255,150,30,0.12)');
+  glowGrad.addColorStop(1, 'rgba(255,100,20,0)');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(baseX - 120, baseY - flameH * 2, 240, flameH * 3);
+
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY + 2);
+  ctx.bezierCurveTo(baseX - flameW * 1.1, baseY - flameH * 0.15, baseX - flameW * 0.6 + swayX, baseY - flameH * 0.7, baseX + swayX * 1.2, baseY - flameH);
+  ctx.bezierCurveTo(baseX + flameW * 0.6 + swayX2, baseY - flameH * 0.7, baseX + flameW * 1.1, baseY - flameH * 0.15, baseX, baseY + 2);
+  const outerGrad = ctx.createLinearGradient(baseX, baseY, baseX + swayX, baseY - flameH);
+  outerGrad.addColorStop(0, 'rgba(255,80,10,0.9)'); outerGrad.addColorStop(0.4, 'rgba(255,160,30,0.85)');
+  outerGrad.addColorStop(0.7, 'rgba(255,200,60,0.7)'); outerGrad.addColorStop(1, 'rgba(255,220,100,0.1)');
+  ctx.fillStyle = outerGrad; ctx.fill();
+
+  const innerH = flameH * 0.55;
+  const innerW = flameW * 0.45;
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY + 1);
+  ctx.bezierCurveTo(baseX - innerW, baseY - innerH * 0.2, baseX - innerW * 0.5 + swayX * 0.6, baseY - innerH * 0.75, baseX + swayX * 0.8, baseY - innerH);
+  ctx.bezierCurveTo(baseX + innerW * 0.5 + swayX2 * 0.6, baseY - innerH * 0.75, baseX + innerW, baseY - innerH * 0.2, baseX, baseY + 1);
+  const innerGrad = ctx.createLinearGradient(baseX, baseY, baseX, baseY - innerH);
+  innerGrad.addColorStop(0, 'rgba(100,130,255,0.8)'); innerGrad.addColorStop(0.25, 'rgba(255,255,200,0.9)');
+  innerGrad.addColorStop(0.6, 'rgba(255,255,230,0.7)'); innerGrad.addColorStop(1, 'rgba(255,255,255,0.0)');
+  ctx.fillStyle = innerGrad; ctx.fill();
+
+  const smokeAlpha = 0.04 + noise(time * 2) * 0.02;
+  for (let i = 0; i < 3; i++) {
+    const smokeY = baseY - flameH - 10 - i * 15;
+    const smokeX = baseX + swayX * (1.5 + i * 0.5) + Math.sin(time * 3 + i) * 5;
+    ctx.beginPath();
+    ctx.arc(smokeX, smokeY, 4 + i * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,170,160,${smokeAlpha - i * 0.01})`; ctx.fill();
+  }
+}
+
+function render(timestamp) {
+  flameTime = timestamp / 1000;
+  ctx.clearRect(0, 0, W, H);
+  drawCandle();
+  drawFlame(flameTime);
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// ============================================================
+//  AUDIO
+// ============================================================
+let candleAudio = null;
+let screamAudio = null;
+
+function startAudio() {
+  if (audioStarted) return;
+  audioStarted = true;
+
+  candleAudio = new Audio('CandleFire.mp3');
+  candleAudio.loop = true;
+  candleAudio.volume = 1.0;
+  candleAudio.play().catch(() => {
+    document.addEventListener('click', () => { if (candleAudio.paused) candleAudio.play(); }, { once: true });
+  });
+
+  // Preload scream audio during user interaction context
+  screamAudio = new Audio('Scream.mp3');
+  screamAudio.volume = 1.0;
+  screamAudio.load();
+}
+
+const audioPrompt = document.getElementById('audioPrompt');
+audioPrompt.addEventListener('click', () => {
+  startAudio();
+  audioPrompt.classList.add('hidden');
+  setTimeout(() => { audioPrompt.style.display = 'none'; }, 800);
+}, { once: true });
+
+// ============================================================
+//  SCARE SEQUENCE (2分後に発動)
+// ============================================================
+const SCARE_DELAY = 120000;       // 2 minutes
+const INTENSE_DURATION = 5000;    // 5 seconds of violent flickering
+const GHOST_DISPLAY_TIME = 4000;  // ghost shows for 4 seconds
+
+let scareTimer = null;
+let intensityInterval = null;
+
+const NOISE_DELAY = 90000;        // 1.5 minutes - horror noise
+let noiseTimer = null;
+let noiseInterval = null;
+
+function startNoiseSequence() {
+  const noiseOverlay = document.getElementById('noiseOverlay');
+
+  noiseTimer = setTimeout(() => {
+    // Fire 4 noise flashes over ~3 seconds, escalating intensity
+    const schedule = [
+      { delay: 0,    cls: 'flash',        dur: 200  },
+      { delay: 800,  cls: 'flash',        dur: 200  },
+      { delay: 1600, cls: 'flash-strong', dur: 300  },
+      { delay: 2800, cls: 'flash-strong', dur: 300  },
+    ];
+
+    schedule.forEach(({ delay, cls, dur }) => {
+      setTimeout(() => {
+        noiseOverlay.className = 'noise-overlay ' + cls;
+        // Also briefly spike the flame
+        const origIntensity = flameIntensity;
+        flameIntensity = 2.0 + Math.random();
+        setTimeout(() => {
+          noiseOverlay.className = 'noise-overlay';
+          flameIntensity = origIntensity;
+        }, dur);
+      }, delay);
+    });
+  }, NOISE_DELAY);
+}
+
+function cancelNoiseSequence() {
+  if (noiseTimer) { clearTimeout(noiseTimer); noiseTimer = null; }
+  document.getElementById('noiseOverlay').className = 'noise-overlay';
+}
+
+function startScareSequence() {
+  startNoiseSequence();
+  scareTimer = setTimeout(() => {
+    // Phase 1: Flame gets violent for 5 seconds
+    let elapsed = 0;
+    const step = 50;
+    intensityInterval = setInterval(() => {
+      elapsed += step;
+      // Ramp intensity from 1.0 to 4.0 over INTENSE_DURATION
+      flameIntensity = 1.0 + (elapsed / INTENSE_DURATION) * 3.0;
+      // Random flicker spikes
+      if (Math.random() < 0.3) flameIntensity += Math.random() * 2;
+
+      if (elapsed >= INTENSE_DURATION) {
+        clearInterval(intensityInterval);
+        // Phase 2: Extinguish
+        extinguishAndScare();
+      }
+    }, step);
+  }, SCARE_DELAY);
+}
+
+function extinguishAndScare() {
+  flameAlive = false;
+  flameIntensity = 1.0;
+
+  // Hide candle glow
+  document.getElementById('candleGlow').style.display = 'none';
+
+  // Fade out candle audio
+  if (candleAudio) {
+    let vol = candleAudio.volume;
+    const fadeOut = setInterval(() => {
+      vol -= 0.1;
+      if (vol <= 0) { clearInterval(fadeOut); candleAudio.pause(); }
+      else candleAudio.volume = vol;
+    }, 30);
+  }
+
+  // Brief darkness, then ghost
+  setTimeout(() => {
+    showGhost();
+  }, 600);
+}
+
+function showGhost() {
+  const overlay = document.getElementById('ghostOverlay');
+  const img = document.getElementById('ghostImg');
+  overlay.classList.add('active');
+
+  // Play scream (preloaded, louder)
+  if (screamAudio) {
+    screamAudio.currentTime = 0;
+    screamAudio.volume = 1.0;
+    screamAudio.play();
+  }
+
+  // Add shake after initial appear animation
+  setTimeout(() => { img.classList.add('ghost-shake'); }, 300);
+
+  // After display time, show black screen then allow reset
+  setTimeout(() => {
+    img.classList.remove('ghost-shake');
+    overlay.classList.remove('active');
+    // Reset everything
+    resetToIdle();
+  }, GHOST_DISPLAY_TIME);
+}
+
+function resetToIdle() {
+  flameAlive = true;
+  flameIntensity = 1.0;
+  document.getElementById('candleGlow').style.display = '';
+  document.getElementById('btnBack').style.display = 'none';
+  document.getElementById('btnSeance').style.display = 'inline-block';
+  if (candleAudio) { candleAudio.volume = 1.0; candleAudio.play(); }
+}
+
+function cancelScare() {
+  if (scareTimer) { clearTimeout(scareTimer); scareTimer = null; }
+  if (intensityInterval) { clearInterval(intensityInterval); intensityInterval = null; }
+  cancelNoiseSequence();
+  flameIntensity = 1.0;
+  flameAlive = true;
+  document.getElementById('candleGlow').style.display = '';
+}
+
+// ============================================================
+//  BUTTONS
+// ============================================================
+const btnSeance = document.getElementById('btnSeance');
+const btnBack = document.getElementById('btnBack');
+
+btnSeance.addEventListener('click', () => {
+  btnSeance.style.display = 'none';
+  btnBack.style.display = 'block';
+  startScareSequence();
+});
+
+btnBack.addEventListener('click', () => {
+  cancelScare();
+  btnBack.style.display = 'none';
+  btnSeance.style.display = 'inline-block';
+});
+</script>
+</body>
+</html>
