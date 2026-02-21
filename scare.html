@@ -733,6 +733,11 @@ function showGhost() {
 }
 
 function resetToIdle() {
+  // Stop all noise/scare timers before returning to idle
+  cancelNoiseSequence();
+  if (scareTimer) { clearTimeout(scareTimer); scareTimer = null; }
+  if (intensityInterval) { clearInterval(intensityInterval); intensityInterval = null; }
+
   flameAlive = true;
   flameIntensity = 1.0;
   document.getElementById('candleGlow').style.display = '';
