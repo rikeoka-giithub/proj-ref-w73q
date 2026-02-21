@@ -402,6 +402,8 @@ requestAnimationFrame(render);
 let candleAudio = null;
 let screamAudio = null;
 
+let noiseAudioCtx = null;
+
 function startAudio() {
   if (audioStarted) return;
   audioStarted = true;
@@ -417,6 +419,9 @@ function startAudio() {
   screamAudio = new Audio('Scream.mp3');
   screamAudio.volume = 1.0;
   screamAudio.load();
+
+  // Initialize Web Audio API context for noise SFX (must be in user gesture)
+  noiseAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
 }
 
 const audioPrompt = document.getElementById('audioPrompt');
@@ -512,10 +517,79 @@ function runNoiseAnimation(duration, intensity, onDone) {
   noiseAnimFrame = requestAnimationFrame(frame);
 }
 
+// ---- Noise Sound Effect (Web Audio API) ----
+function playNoiseSFX(duration, intensity) {
+  if (!noiseAudioCtx) return;
+  const ctx = noiseAudioCtx;
+  const len = duration / 1000; // seconds
+  const sampleRate = ctx.sampleRate;
+  const bufferSize = Math.floor(sampleRate * len);
+  const buffer = ctx.createBuffer(1, bufferSize, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  // Generate harsh static noise with random crackle bursts
+  for (let i = 0; i < bufferSize; i++) {
+    let sample = (Math.random() * 2 - 1); // white noise
+    // Add harsh crackle spikes
+    if (Math.random() < 0.02 * intensity) {
+      sample *= 2.5;
+    }
+    // Envelope: quick attack, sustain, quick release
+    const t = i / bufferSize;
+    const env = t < 0.05 ? t / 0.05 : (t > 0.85 ? (1 - t) / 0.15 : 1.0);
+    data[i] = sample * env;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+
+  // Bandpass filter for a gritty, TV-static feel
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 800 + Math.random() * 2000;
+  bandpass.Q.value = 0.5 + Math.random() * 1.5;
+
+  // Low rumble layer
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 200 + Math.random() * 100;
+
+  const rumbleBuffer = ctx.createBuffer(1, bufferSize, sampleRate);
+  const rumbleData = rumbleBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    const t = i / bufferSize;
+    const env = t < 0.05 ? t / 0.05 : (t > 0.85 ? (1 - t) / 0.15 : 1.0);
+    rumbleData[i] = (Math.random() * 2 - 1) * env;
+  }
+  const rumbleSource = ctx.createBufferSource();
+  rumbleSource.buffer = rumbleBuffer;
+
+  // Gain control
+  const mainGain = ctx.createGain();
+  mainGain.gain.value = 0.35 * intensity;
+
+  const rumbleGain = ctx.createGain();
+  rumbleGain.gain.value = 0.25 * intensity;
+
+  source.connect(bandpass);
+  bandpass.connect(mainGain);
+  mainGain.connect(ctx.destination);
+
+  rumbleSource.connect(lowpass);
+  lowpass.connect(rumbleGain);
+  rumbleGain.connect(ctx.destination);
+
+  source.start();
+  rumbleSource.start();
+}
+
 function fireNoiseBlast(duration, intensity, withInvert) {
   // Flame spike
   const origIntensity = flameIntensity;
   flameIntensity = 2.5 + Math.random() * 1.5;
+
+  // Play noise sound effect synchronized with visual
+  playNoiseSFX(duration, intensity);
 
   // Inversion flash
   if (withInvert) {
