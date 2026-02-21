@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ロウソク検証 - 理系のオカルト研</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@700;900&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #0a0a0a;
+    font-family: 'Noto Serif JP', serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .container {
+    position: relative;
+    width: 100%; height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    background: radial-gradient(ellipse at 50% 60%, #1a0a00 0%, #0a0505 40%, #000000 100%);
+  }
+
+  .fog {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 80%, rgba(60,30,30,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, rgba(40,20,40,0.10) 0%, transparent 50%);
+    animation: fogDrift 12s ease-in-out infinite alternate;
+    pointer-events: none; z-index: 1;
+  }
+  @keyframes fogDrift {
+    0%   { opacity: 0.3; transform: translateX(-10px); }
+    100% { opacity: 0.7; transform: translateX(10px); }
+  }
+
+  .particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+  .particle {
+    position: absolute; width: 2px; height: 2px;
+    background: rgba(255, 180, 80, 0.4); border-radius: 50%;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(100vh) scale(1); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-10vh) scale(0.3); opacity: 0; }
+  }
+
+  .title-area { position: relative; z-index: 10; text-align: center; padding-top: max(3vh, 20px); }
+  .title-main {
+    font-size: clamp(28px, 7vw, 52px); font-weight: 900; color: #e8c47a;
+    text-shadow: 0 0 20px rgba(255,150,50,0.6), 0 0 60px rgba(255,100,20,0.3), 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: 0.15em; animation: titleFlicker 4s ease-in-out infinite;
+  }
+  @keyframes titleFlicker {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.92; } 52% { opacity: 0.85; } 54% { opacity: 0.95; }
+  }
+  .title-sub {
+    font-size: clamp(11px, 2.8vw, 16px); color: rgba(200,160,100,0.5);
+    letter-spacing: 0.3em; margin-top: 6px; font-weight: 700;
+  }
+
+  .candle-area {
+    position: relative; z-index: 10; flex: 1;
+    display: flex; align-items: center; justify-content: center; width: 100%;
+  }
+  #candleCanvas { display: block; max-width: 100%; max-height: 100%; }
+
+  .candle-glow {
+    position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 120px;
+    background: radial-gradient(ellipse, rgba(255,140,40,0.12) 0%, transparent 70%);
+    border-radius: 50%; animation: glowPulse 3s ease-in-out infinite;
+    pointer-events: none; z-index: 5;
+  }
+  @keyframes glowPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+    50%      { transform: translateX(-50%) scale(1.15); opacity: 1; }
+  }
+
+  .button-area { position: relative; z-index: 10; padding-bottom: max(4vh, 24px); text-align: center; }
+  .btn-seance {
+    position: relative; display: inline-block; padding: 16px 40px;
+    font-family: 'Noto Serif JP', serif; font-size: clamp(16px, 4vw, 22px); font-weight: 700;
+    color: #f0d8a0;
+    background: linear-gradient(180deg, rgba(80,30,10,0.9) 0%, rgba(40,10,5,0.95) 100%);
+    border: 1px solid rgba(200,130,50,0.4); border-radius: 4px; cursor: pointer;
+    letter-spacing: 0.2em; text-shadow: 0 0 12px rgba(255,150,50,0.5);
+    box-shadow: 0 0 20px rgba(255,100,20,0.15), inset 0 1px 0 rgba(255,200,100,0.1);
+    transition: all 0.3s ease; overflow: hidden;
+  }
+  .btn-seance::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,150,50,0.08) 0%, transparent 50%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .btn-seance:hover::before, .btn-seance:active::before { opacity: 1; }
+  .btn-seance:active {
+    transform: scale(0.97);
+    box-shadow: 0 0 30px rgba(255,100,20,0.3), inset 0 1px 0 rgba(255,200,100,0.15);
+  }
+  .btn-seance::after {
+    content: ''; position: absolute; inset: -2px; border-radius: 6px;
+    background: linear-gradient(45deg, rgba(255,120,30,0.3), transparent, rgba(255,120,30,0.3));
+    z-index: -1; animation: borderGlow 3s ease-in-out infinite;
+  }
+  @keyframes borderGlow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* Back button */
+  .btn-back {
+    display: none; position: fixed; top: max(2vh, 12px); left: max(2vw, 12px); z-index: 100;
+    background: rgba(40,20,10,0.7); border: 1px solid rgba(200,130,50,0.3);
+    color: rgba(200,160,100,0.6); font-family: 'Noto Serif JP', serif;
+    font-size: 14px; padding: 8px 14px; border-radius: 4px; cursor: pointer; letter-spacing: 0.1em;
+  }
+
+  /* Audio start overlay */
+  .audio-prompt {
+    position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; transition: opacity 0.8s ease;
+  }
+  .audio-prompt.hidden { opacity: 0; pointer-events: none; }
+  .audio-prompt-icon { font-size: 48px; margin-bottom: 20px; animation: promptPulse 2s ease-in-out infinite; }
+  @keyframes promptPulse { 0%, 100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.1); opacity: 1; } }
+  .audio-prompt-text { font-family: 'Noto Serif JP', serif; font-size: clamp(14px, 4vw, 20px); color: rgba(200,160,100,0.8); letter-spacing: 0.15em; }
+  .audio-prompt-sub { font-family: 'Noto Serif JP', serif; font-size: clamp(10px, 2.5vw, 13px); color: rgba(200,160,100,0.35); margin-top: 10px; letter-spacing: 0.1em; }
+
+  /* ===== Sensor HUD ===== */
+  .sensor-hud {
+    display: none;
+    position: fixed;
+    bottom: max(4vh, 24px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    text-align: center;
+    width: 90%;
+    max-width: 360px;
+  }
+  .sensor-hud.active { display: block; }
+
+  .sensor-status {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(11px, 3vw, 14px);
+    color: rgba(200,160,100,0.5);
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .sensor-bar-container {
+    position: relative;
+    width: 100%;
+    height: 8px;
+    background: rgba(60,30,10,0.6);
+    border-radius: 4px;
+    border: 1px solid rgba(200,130,50,0.2);
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .sensor-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 4px;
+    transition: width 0.3s ease, background 0.3s ease;
+    background: linear-gradient(90deg, rgba(100,180,100,0.8), rgba(255,200,50,0.8));
+  }
+  .sensor-bar-fill.warning {
+    background: linear-gradient(90deg, rgba(255,200,50,0.9), rgba(255,100,30,0.9));
+  }
+  .sensor-bar-fill.danger {
+    background: linear-gradient(90deg, rgba(255,80,20,0.9), rgba(255,30,30,1));
+  }
+
+  .sensor-label {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(10px, 2.5vw, 12px);
+    color: rgba(200,160,100,0.35);
+    letter-spacing: 0.05em;
+  }
+
+  .sensor-value {
+    font-family: monospace;
+    font-size: clamp(10px, 2.5vw, 12px);
+    color: rgba(200,160,100,0.45);
+    margin-top: 4px;
+  }
+
+  /* Calibration overlay */
+  .calibration-overlay {
+    position: fixed; inset: 0; z-index: 900;
+    background: rgba(0,0,0,0.85);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .calibration-overlay.active { display: flex; }
+  .calibration-text {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(14px, 4vw, 20px);
+    color: rgba(200,160,100,0.8);
+    letter-spacing: 0.15em;
+    text-align: center;
+    line-height: 1.8;
+  }
+  .calibration-dots {
+    margin-top: 16px;
+    font-size: 24px;
+    color: rgba(200,160,100,0.5);
+    animation: dotPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 0.3; } 50% { opacity: 1; }
+  }
+
+  /* Sensor error overlay */
+  .sensor-error {
+    display: none; position: fixed; inset: 0; z-index: 900;
+    background: rgba(0,0,0,0.85);
+    flex-direction: column; align-items: center; justify-content: center;
+    padding: 30px;
+  }
+  .sensor-error.active { display: flex; }
+  .sensor-error-text {
+    font-family: 'Noto Serif JP', serif;
+    font-size: clamp(13px, 3.5vw, 18px);
+    color: rgba(200,100,80,0.8);
+    letter-spacing: 0.1em;
+    text-align: center;
+    line-height: 1.8;
+  }
+  .sensor-error-btn {
+    margin-top: 24px;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 14px; padding: 10px 24px;
+    background: rgba(80,30,10,0.8); border: 1px solid rgba(200,130,50,0.3);
+    color: rgba(200,160,100,0.7); border-radius: 4px; cursor: pointer;
+  }
+
+  /* Ghost scare overlay */
+  .ghost-overlay {
+    position: fixed; inset: 0; z-index: 2000;
+    background: #000; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+  }
+  .ghost-overlay.active { display: flex; }
+  .ghost-overlay img {
+    max-width: 100%; max-height: 80vh; object-fit: contain;
+    animation: ghostAppear 0.3s ease-out forwards;
+  }
+  @keyframes ghostAppear {
+    0%   { transform: scale(1.8) translateY(30px); opacity: 0; filter: brightness(0); }
+    40%  { transform: scale(1.15); opacity: 1; filter: brightness(1.5); }
+    100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  }
+  .ghost-overlay::before {
+    content: ''; position: absolute; inset: 0;
+    background: white; animation: screenFlash 0.4s ease-out forwards; pointer-events: none; z-index: -1;
+  }
+  @keyframes screenFlash { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+  .ghost-shake { animation: ghostShake 0.1s infinite; }
+  @keyframes ghostShake {
+    0%  { transform: translate(2px, -1px); }
+    25% { transform: translate(-2px, 2px); }
+    50% { transform: translate(1px, -2px); }
+    75% { transform: translate(-1px, 1px); }
+    100%{ transform: translate(2px, -1px); }
+  }
+</style>
+</head>
+<body>
+
+<link rel="preload" href="ghost.png" as="image">
+
+<!-- Audio start overlay -->
+<div class="audio-prompt" id="audioPrompt">
+  <div class="audio-prompt-icon">🕯️</div>
+  <div class="audio-prompt-text">画面をタップして開始</div>
+  <div class="audio-prompt-sub">音声が流れます</div>
+</div>
+
+<!-- Calibration overlay -->
+<div class="calibration-overlay" id="calibrationOverlay">
+  <div class="calibration-text">
+    磁場をキャリブレーション中<br>
+    スマホを動かさないでください
+  </div>
+  <div class="calibration-dots">...</div>
+</div>
+
+<!-- Sensor error overlay -->
+<div class="sensor-error" id="sensorError">
+  <div class="sensor-error-text" id="sensorErrorText">
+    磁気センサーが利用できません<br>
+    この端末では検証モードを利用できません
+  </div>
+  <button class="sensor-error-btn" id="sensorErrorBtn">戻る</button>
+</div>
+
+<!-- Ghost scare overlay -->
+<div class="ghost-overlay" id="ghostOverlay">
+  <img src="ghost.png" alt="" id="ghostImg">
+</div>
+
+<div class="container">
+  <button class="btn-back" id="btnBack">✕ 戻る</button>
+  <div class="fog"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="title-area">
+    <h1 class="title-main">ロウソク検証</h1>
+    <div class="title-sub">理系のオカルト研</div>
+  </div>
+
+  <div class="candle-area">
+    <div class="candle-glow" id="candleGlow"></div>
+    <canvas id="candleCanvas"></canvas>
+  </div>
+
+  <div class="button-area">
+    <button class="btn-seance" id="btnSeance">交霊術を開始する</button>
+  </div>
+
+  <!-- Sensor HUD (shown during detection) -->
+  <div class="sensor-hud" id="sensorHud">
+    <div class="sensor-status" id="sensorStatus">磁場を監視中...</div>
+    <div class="sensor-bar-container">
+      <div class="sensor-bar-fill" id="sensorBarFill"></div>
+    </div>
+    <div class="sensor-label">霊的反応レベル</div>
+    <div class="sensor-value" id="sensorValue">heading: --- | delta: ---</div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  PARTICLES
+// ============================================================
+(function initParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (8 + Math.random() * 12) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+    container.appendChild(p);
+  }
+})();
+
+// ============================================================
+//  CANDLE RENDERING
+// ============================================================
+const canvas = document.getElementById('candleCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H, candleX, candleBaseY, candleW, candleH, wickTop;
+let flameTime = 0;
+let audioStarted = false;
+let flameIntensity = 1.0;
+let flameAlive = true;
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  candleW = Math.min(W * 0.12, 50);
+  candleH = Math.min(H * 0.38, 200);
+  candleX = W / 2;
+  candleBaseY = H * 0.75;
+  wickTop = candleBaseY - candleH;
+}
+window.addEventListener('resize', resize);
+resize();
+
+function noise(t) {
+  return Math.sin(t * 2.1) * 0.3 + Math.sin(t * 5.3) * 0.2 + Math.sin(t * 11.7) * 0.15 + Math.sin(t * 23.1) * 0.1;
+}
+
+function drawCandle() {
+  const bodyTop = wickTop + 8;
+  const grad = ctx.createLinearGradient(candleX - candleW/2, bodyTop, candleX + candleW/2, bodyTop);
+  grad.addColorStop(0, '#d4c4a0'); grad.addColorStop(0.3, '#f5ead0');
+  grad.addColorStop(0.6, '#f0e0c0'); grad.addColorStop(1, '#b0a080');
+
+  ctx.beginPath();
+  ctx.moveTo(candleX - candleW/2, bodyTop);
+  ctx.lineTo(candleX - candleW/2, candleBaseY);
+  ctx.quadraticCurveTo(candleX - candleW/2, candleBaseY + 4, candleX, candleBaseY + 4);
+  ctx.quadraticCurveTo(candleX + candleW/2, candleBaseY + 4, candleX + candleW/2, candleBaseY);
+  ctx.lineTo(candleX + candleW/2, bodyTop);
+  const meltA = Math.sin(flameTime * 0.7) * 2;
+  const meltB = Math.cos(flameTime * 0.5) * 1.5;
+  ctx.quadraticCurveTo(candleX + candleW * 0.25, bodyTop - 3 + meltA, candleX, bodyTop - 1 + meltB);
+  ctx.quadraticCurveTo(candleX - candleW * 0.25, bodyTop - 3 - meltA, candleX - candleW/2, bodyTop);
+  ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  const dripY = bodyTop + candleH * 0.2;
+  ctx.beginPath();
+  ctx.ellipse(candleX + candleW/2 + 1, dripY, 3, 8 + Math.sin(flameTime) * 1, 0.1, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(230,215,180,0.7)'; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(candleX, bodyTop);
+  ctx.quadraticCurveTo(candleX + noise(flameTime * 3) * 2, wickTop + 4, candleX, wickTop);
+  ctx.strokeStyle = '#2a2015'; ctx.lineWidth = 1.8; ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(candleX, wickTop, 2, 0, Math.PI * 2);
+  ctx.fillStyle = flameAlive ? '#ff8020' : '#2a2015'; ctx.fill();
+}
+
+function drawFlame(time) {
+  if (!flameAlive) return;
+  const baseX = candleX, baseY = wickTop, fi = flameIntensity;
+  const flicker = noise(time * 4 * fi), flicker2 = noise(time * 6 * fi + 100);
+  const swayX = flicker * 8 * fi, swayX2 = flicker2 * 5 * fi;
+  const flameH = (60 + noise(time * 3 * fi) * 14) * (0.7 + fi * 0.3);
+  const flameW = (20 + noise(time * 5 * fi + 50) * 5) * (0.7 + fi * 0.3);
+
+  const glowGrad = ctx.createRadialGradient(baseX + swayX * 0.5, baseY - flameH * 0.5, 0, baseX, baseY - flameH * 0.3, flameH * 1.5);
+  glowGrad.addColorStop(0, 'rgba(255,150,30,0.12)'); glowGrad.addColorStop(1, 'rgba(255,100,20,0)');
+  ctx.fillStyle = glowGrad;
+  ctx.fillRect(baseX - 120, baseY - flameH * 2, 240, flameH * 3);
+
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY + 2);
+  ctx.bezierCurveTo(baseX - flameW * 1.1, baseY - flameH * 0.15, baseX - flameW * 0.6 + swayX, baseY - flameH * 0.7, baseX + swayX * 1.2, baseY - flameH);
+  ctx.bezierCurveTo(baseX + flameW * 0.6 + swayX2, baseY - flameH * 0.7, baseX + flameW * 1.1, baseY - flameH * 0.15, baseX, baseY + 2);
+  const outerGrad = ctx.createLinearGradient(baseX, baseY, baseX + swayX, baseY - flameH);
+  outerGrad.addColorStop(0, 'rgba(255,80,10,0.9)'); outerGrad.addColorStop(0.4, 'rgba(255,160,30,0.85)');
+  outerGrad.addColorStop(0.7, 'rgba(255,200,60,0.7)'); outerGrad.addColorStop(1, 'rgba(255,220,100,0.1)');
+  ctx.fillStyle = outerGrad; ctx.fill();
+
+  const innerH = flameH * 0.55, innerW = flameW * 0.45;
+  ctx.beginPath();
+  ctx.moveTo(baseX, baseY + 1);
+  ctx.bezierCurveTo(baseX - innerW, baseY - innerH * 0.2, baseX - innerW * 0.5 + swayX * 0.6, baseY - innerH * 0.75, baseX + swayX * 0.8, baseY - innerH);
+  ctx.bezierCurveTo(baseX + innerW * 0.5 + swayX2 * 0.6, baseY - innerH * 0.75, baseX + innerW, baseY - innerH * 0.2, baseX, baseY + 1);
+  const innerGrad = ctx.createLinearGradient(baseX, baseY, baseX, baseY - innerH);
+  innerGrad.addColorStop(0, 'rgba(100,130,255,0.8)'); innerGrad.addColorStop(0.25, 'rgba(255,255,200,0.9)');
+  innerGrad.addColorStop(0.6, 'rgba(255,255,230,0.7)'); innerGrad.addColorStop(1, 'rgba(255,255,255,0.0)');
+  ctx.fillStyle = innerGrad; ctx.fill();
+
+  const smokeAlpha = 0.04 + noise(time * 2) * 0.02;
+  for (let i = 0; i < 3; i++) {
+    const smokeY = baseY - flameH - 10 - i * 15;
+    const smokeX = baseX + swayX * (1.5 + i * 0.5) + Math.sin(time * 3 + i) * 5;
+    ctx.beginPath(); ctx.arc(smokeX, smokeY, 4 + i * 3, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(180,170,160,${smokeAlpha - i * 0.01})`; ctx.fill();
+  }
+}
+
+function render(timestamp) {
+  flameTime = timestamp / 1000;
+  ctx.clearRect(0, 0, W, H);
+  drawCandle();
+  drawFlame(flameTime);
+  requestAnimationFrame(render);
+}
+requestAnimationFrame(render);
+
+// ============================================================
+//  AUDIO
+// ============================================================
+let candleAudio = null;
+let screamAudio = null;
+
+function startAudio() {
+  if (audioStarted) return;
+  audioStarted = true;
+  candleAudio = new Audio('CandleFire.mp3');
+  candleAudio.loop = true; candleAudio.volume = 1.0;
+  candleAudio.play().catch(() => {
+    document.addEventListener('click', () => { if (candleAudio.paused) candleAudio.play(); }, { once: true });
+  });
+
+  // Preload scream audio during user interaction context
+  screamAudio = new Audio('Scream.mp3');
+  screamAudio.volume = 1.0;
+  screamAudio.load();
+}
+
+const audioPrompt = document.getElementById('audioPrompt');
+audioPrompt.addEventListener('click', () => {
+  startAudio();
+  audioPrompt.classList.add('hidden');
+  setTimeout(() => { audioPrompt.style.display = 'none'; }, 800);
+}, { once: true });
+
+// ============================================================
+//  MAGNETIC SENSOR DETECTION
+// ============================================================
+/*
+  Strategy:
+  1. On start, run 5-second calibration: collect heading values, compute mean + stddev
+  2. After calibration, monitor heading. Compute a rolling "anomaly score" based on
+     how far each reading deviates from calibrated baseline.
+  3. The anomaly score feeds into a "reaction level" (0-100%).
+  4. Reaction level directly controls flameIntensity for visual feedback.
+  5. When reaction level stays above 80% for 3+ seconds, trigger the scare.
+
+  This approach handles device/location variance because the baseline is per-session.
+  Sensitivity is "just right" because:
+  - Tiny normal jitter (1-3 degrees) gets filtered out via the calibrated stddev
+  - Real anomalies (5-15+ degree sudden shifts) score high
+  - The 80% threshold + 3-second sustain prevents false triggers while
+    still being achievable with genuine magnetic interference
+*/
+
+let sensorActive = false;
+let calibrating = false;
+let calibrationData = [];
+let baselineHeading = 0;
+let baselineStdDev = 0;
+let reactionLevel = 0;
+let reactionAbove80Start = 0;
+const TRIGGER_SUSTAIN = 3000; // must stay above 80% for 3s
+let scareTriggered = false;
+let sensorCheckInterval = null;
+let headingHistory = [];
+const HISTORY_SIZE = 20;
+
+// Elements
+const sensorHud = document.getElementById('sensorHud');
+const sensorStatus = document.getElementById('sensorStatus');
+const sensorBarFill = document.getElementById('sensorBarFill');
+const sensorValue = document.getElementById('sensorValue');
+const calibrationOverlay = document.getElementById('calibrationOverlay');
+const sensorError = document.getElementById('sensorError');
+const sensorErrorText = document.getElementById('sensorErrorText');
+
+function requestSensorPermission() {
+  // iOS 13+ requires explicit permission
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    return DeviceOrientationEvent.requestPermission().then(state => {
+      if (state === 'granted') return true;
+      throw new Error('Permission denied');
+    });
+  }
+  return Promise.resolve(true);
+}
+
+let currentHeading = null;
+let hasReceivedHeading = false;
+
+function onDeviceOrientation(e) {
+  // webkitCompassHeading for iOS, alpha for Android (alpha is 360-heading)
+  let heading = null;
+  if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
+    heading = e.webkitCompassHeading;
+  } else if (e.alpha !== null) {
+    heading = (360 - e.alpha) % 360;
+  }
+  if (heading !== null) {
+    currentHeading = heading;
+    hasReceivedHeading = true;
+  }
+}
+
+function startCalibration() {
+  calibrating = true;
+  calibrationData = [];
+  calibrationOverlay.classList.add('active');
+
+  window.addEventListener('deviceorientation', onDeviceOrientation, true);
+
+  // Collect data for 5 seconds
+  const collectInterval = setInterval(() => {
+    if (currentHeading !== null) {
+      calibrationData.push(currentHeading);
+    }
+  }, 100);
+
+  setTimeout(() => {
+    clearInterval(collectInterval);
+    calibrationOverlay.classList.remove('active');
+
+    if (calibrationData.length < 10) {
+      // Not enough data - sensor might not work
+      showSensorError('磁気センサーのデータが取得できませんでした\nこの端末では検証モードを利用できません');
+      return;
+    }
+
+    // Compute circular mean and stddev (heading wraps around 360)
+    const sinSum = calibrationData.reduce((s, h) => s + Math.sin(h * Math.PI / 180), 0);
+    const cosSum = calibrationData.reduce((s, h) => s + Math.cos(h * Math.PI / 180), 0);
+    baselineHeading = ((Math.atan2(sinSum, cosSum) * 180 / Math.PI) + 360) % 360;
+
+    // Compute deviations
+    const deviations = calibrationData.map(h => {
+      let d = h - baselineHeading;
+      if (d > 180) d -= 360;
+      if (d < -180) d += 360;
+      return d;
+    });
+    const variance = deviations.reduce((s, d) => s + d * d, 0) / deviations.length;
+    baselineStdDev = Math.sqrt(variance);
+    // Minimum stddev floor to prevent over-sensitivity on very stable devices
+    baselineStdDev = Math.max(baselineStdDev, 1.5);
+
+    calibrating = false;
+    startMonitoring();
+  }, 5000);
+}
+
+function startMonitoring() {
+  sensorActive = true;
+  scareTriggered = false;
+  reactionLevel = 0;
+  reactionAbove80Start = 0;
+  headingHistory = [];
+
+  sensorHud.classList.add('active');
+  sensorStatus.textContent = '磁場を監視中...';
+
+  sensorCheckInterval = setInterval(() => {
+    if (currentHeading === null || scareTriggered) return;
+
+    headingHistory.push(currentHeading);
+    if (headingHistory.length > HISTORY_SIZE) headingHistory.shift();
+
+    // Compute deviation from baseline
+    let delta = currentHeading - baselineHeading;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    const absDelta = Math.abs(delta);
+
+    // Compute rolling jitter (stddev of recent readings)
+    let jitter = 0;
+    if (headingHistory.length >= 5) {
+      const recent = headingHistory.slice(-10);
+      const sinS = recent.reduce((s, h) => s + Math.sin(h * Math.PI / 180), 0);
+      const cosS = recent.reduce((s, h) => s + Math.cos(h * Math.PI / 180), 0);
+      const recentMean = ((Math.atan2(sinS, cosS) * 180 / Math.PI) + 360) % 360;
+      const devs = recent.map(h => {
+        let d = h - recentMean;
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+        return d;
+      });
+      jitter = Math.sqrt(devs.reduce((s, d) => s + d * d, 0) / devs.length);
+    }
+
+    // Anomaly score: combines absolute deviation and rolling jitter
+    // Normalized against the calibrated baseline stddev
+    const deviationScore = Math.min(absDelta / (baselineStdDev * 10), 1.0);
+    const jitterScore = Math.min(jitter / (baselineStdDev * 7), 1.0);
+    const rawScore = deviationScore * 0.5 + jitterScore * 0.5;
+
+    // Smooth the reaction level (approach target with inertia)
+    const targetLevel = rawScore * 100;
+    // Rise fast (0.3), fall slow (0.08) - feels more dramatic
+    const approach = targetLevel > reactionLevel ? 0.15 : 0.06;
+    reactionLevel += (targetLevel - reactionLevel) * approach;
+    reactionLevel = Math.max(0, Math.min(100, reactionLevel));
+
+    // Update flame
+    flameIntensity = 1.0 + (reactionLevel / 100) * 3.0;
+
+    // Update HUD
+    updateHud(absDelta, jitter);
+
+    // Check trigger condition: above 80% for TRIGGER_SUSTAIN ms
+    const now = Date.now();
+    if (reactionLevel >= 80) {
+      if (reactionAbove80Start === 0) reactionAbove80Start = now;
+      if (now - reactionAbove80Start >= TRIGGER_SUSTAIN) {
+        triggerScare();
+      }
+    } else {
+      reactionAbove80Start = 0;
+    }
+  }, 100);
+}
+
+function updateHud(absDelta, jitter) {
+  const pct = Math.round(reactionLevel);
+  sensorBarFill.style.width = pct + '%';
+
+  if (pct >= 70) {
+    sensorBarFill.className = 'sensor-bar-fill danger';
+    sensorStatus.textContent = '強い磁場異常を検知...！';
+    sensorStatus.style.color = 'rgba(255,100,80,0.9)';
+  } else if (pct >= 40) {
+    sensorBarFill.className = 'sensor-bar-fill warning';
+    sensorStatus.textContent = '磁場に変動あり...';
+    sensorStatus.style.color = 'rgba(255,200,80,0.8)';
+  } else {
+    sensorBarFill.className = 'sensor-bar-fill';
+    sensorStatus.textContent = '磁場を監視中...';
+    sensorStatus.style.color = 'rgba(200,160,100,0.5)';
+  }
+
+  sensorValue.textContent = `heading: ${currentHeading !== null ? currentHeading.toFixed(1) : '---'}° | Δ${absDelta.toFixed(1)}° | jitter: ${jitter.toFixed(2)}`;
+}
+
+function showSensorError(msg) {
+  sensorErrorText.textContent = msg;
+  sensorError.classList.add('active');
+}
+
+document.getElementById('sensorErrorBtn').addEventListener('click', () => {
+  sensorError.classList.remove('active');
+  stopSensor();
+  resetToIdle();
+});
+
+// ============================================================
+//  SCARE SEQUENCE (shared with sensor trigger)
+// ============================================================
+const INTENSE_DURATION = 5000;
+const GHOST_DISPLAY_TIME = 4000;
+let intensityInterval = null;
+
+function triggerScare() {
+  if (scareTriggered) return;
+  scareTriggered = true;
+  stopSensor();
+
+  // Phase 1: Violent flickering for 5s
+  let elapsed = 0;
+  const step = 50;
+  intensityInterval = setInterval(() => {
+    elapsed += step;
+    flameIntensity = 1.0 + (elapsed / INTENSE_DURATION) * 3.0;
+    if (Math.random() < 0.3) flameIntensity += Math.random() * 2;
+    if (elapsed >= INTENSE_DURATION) {
+      clearInterval(intensityInterval);
+      extinguishAndScare();
+    }
+  }, step);
+}
+
+function extinguishAndScare() {
+  flameAlive = false;
+  flameIntensity = 1.0;
+  document.getElementById('candleGlow').style.display = 'none';
+
+  if (candleAudio) {
+    let vol = candleAudio.volume;
+    const fadeOut = setInterval(() => {
+      vol -= 0.1;
+      if (vol <= 0) { clearInterval(fadeOut); candleAudio.pause(); }
+      else candleAudio.volume = vol;
+    }, 30);
+  }
+
+  setTimeout(() => { showGhost(); }, 600);
+}
+
+function showGhost() {
+  const overlay = document.getElementById('ghostOverlay');
+  const img = document.getElementById('ghostImg');
+  overlay.classList.add('active');
+  // Play scream (preloaded during user interaction)
+  if (screamAudio) {
+    screamAudio.currentTime = 0;
+    screamAudio.volume = 1.0;
+    screamAudio.play();
+  }
+  setTimeout(() => { img.classList.add('ghost-shake'); }, 300);
+  setTimeout(() => {
+    img.classList.remove('ghost-shake');
+    overlay.classList.remove('active');
+    resetToIdle();
+  }, GHOST_DISPLAY_TIME);
+}
+
+function stopSensor() {
+  sensorActive = false;
+  if (sensorCheckInterval) { clearInterval(sensorCheckInterval); sensorCheckInterval = null; }
+  window.removeEventListener('deviceorientation', onDeviceOrientation, true);
+  sensorHud.classList.remove('active');
+}
+
+function resetToIdle() {
+  flameAlive = true;
+  flameIntensity = 1.0;
+  reactionLevel = 0;
+  scareTriggered = false;
+  document.getElementById('candleGlow').style.display = '';
+  document.getElementById('btnBack').style.display = 'none';
+  document.getElementById('btnSeance').style.display = 'inline-block';
+  if (candleAudio) { candleAudio.volume = 1.0; candleAudio.play(); }
+}
+
+// ============================================================
+//  BUTTONS
+// ============================================================
+const btnSeance = document.getElementById('btnSeance');
+const btnBack = document.getElementById('btnBack');
+
+btnSeance.addEventListener('click', () => {
+  btnSeance.style.display = 'none';
+  btnBack.style.display = 'block';
+
+  requestSensorPermission()
+    .then(() => {
+      startCalibration();
+    })
+    .catch(() => {
+      showSensorError('センサーへのアクセスが拒否されました\niOSの場合: 設定→Safari→モーションと画面の向きのアクセスを許可してください');
+    });
+});
+
+btnBack.addEventListener('click', () => {
+  stopSensor();
+  if (intensityInterval) { clearInterval(intensityInterval); intensityInterval = null; }
+  calibrationOverlay.classList.remove('active');
+  flameIntensity = 1.0;
+  flameAlive = true;
+  document.getElementById('candleGlow').style.display = '';
+  btnBack.style.display = 'none';
+  btnSeance.style.display = 'inline-block';
+});
+</script>
+</body>
+</html>
