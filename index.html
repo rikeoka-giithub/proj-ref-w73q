@@ -3,17 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <title>ロウソク検証 - 理系のオカルト研</title>
+<style>
+  body { margin:0; background:#000; }
+</style>
 <script>
 // =====================================================
-//  ページ切り替えスイッチ
-//  'normal.html' か 'real.html' を指定するだけ
+//  ページ切り替えルーター
+//  config.json の "page" を GitHub API 経由で取得し即時反映
+//  ※ GitHub Pages の CDN キャッシュ (max-age=600) を完全にバイパス
+//
+//  【切り替え方法】
+//  GitHub で config.json を開いて以下のように変更するだけ:
+//    イベント中: {"page":"normal.html"}
+//    イベント後: {"page":"real.html"}
 // =====================================================
-var page = 'normal.html';
-location.replace(page + '?v=' + Date.now());
+
+// GitHub API エンドポイント（max-age=60、+ クエリでバイパス）
+var API = 'https://api.github.com/repos/rikeoka-giithub/proj-ref-w73q/contents/config.json?ref=main&ts=' + Date.now();
+
+// フォールバック: API が失敗した場合のデフォルトページ
+var FALLBACK = 'normal.html';
+
+fetch(API, { headers: { 'Accept': 'application/vnd.github.v3.raw' } })
+  .then(function(r) {
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  })
+  .then(function(cfg) {
+    var page = cfg.page || FALLBACK;
+    // 許可されたページのみ（セキュリティ）
+    var allowed = ['normal.html', 'real.html'];
+    if (allowed.indexOf(page) === -1) page = FALLBACK;
+    location.replace(page + '?v=' + Date.now());
+  })
+  .catch(function() {
+    // API エラー時はフォールバック
+    location.replace(FALLBACK + '?v=' + Date.now());
+  });
 </script>
 </head>
 <body></body>
