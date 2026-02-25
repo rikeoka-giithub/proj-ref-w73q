@@ -139,6 +139,178 @@
     font-size: 14px; padding: 8px 14px; border-radius: 4px; cursor: pointer; letter-spacing: 0.1em;
   }
 
+  /* ============================================================
+     INTRO OVERLAY
+     ============================================================ */
+  .intro-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .intro-overlay.done {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+
+  /* Scanlines */
+  .intro-scanlines {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,255,204,0.015) 2px, rgba(0,255,204,0.015) 4px
+    );
+  }
+
+  /* Grid background */
+  .intro-grid {
+    position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: 0;
+    background-image:
+      linear-gradient(rgba(0,255,204,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,204,0.08) 1px, transparent 1px);
+    background-size: 30px 30px;
+    animation: introGridIn 1.5s 0.3s ease-out forwards;
+  }
+  @keyframes introGridIn {
+    0% { opacity: 0; background-size: 60px 60px; }
+    100% { opacity: 1; background-size: 30px 30px; }
+  }
+
+  /* Logo container */
+  .intro-logo-wrap {
+    position: relative; z-index: 10;
+    width: 140px; height: 140px;
+    margin-bottom: 24px;
+  }
+
+  /* Spinning ring around logo */
+  .intro-ring {
+    position: absolute; inset: -18px;
+    border: 1.5px solid rgba(0,255,204,0.0);
+    border-top-color: rgba(0,255,204,0.6);
+    border-right-color: rgba(0,255,204,0.2);
+    border-radius: 50%;
+    animation: introRingSpin 2s linear infinite, introRingIn 0.8s 0.2s ease-out forwards;
+    opacity: 0;
+  }
+  .intro-ring-2 {
+    position: absolute; inset: -30px;
+    border: 1px dashed rgba(0,255,204,0.0);
+    border-radius: 50%;
+    animation: introRingSpin2 4s linear infinite, introRingIn2 1s 0.5s ease-out forwards;
+    opacity: 0;
+  }
+  @keyframes introRingSpin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+  @keyframes introRingSpin2 { 0%{transform:rotate(0)} 100%{transform:rotate(-360deg)} }
+  @keyframes introRingIn { 0%{opacity:0;border-top-color:rgba(0,255,204,0)} 100%{opacity:1;border-top-color:rgba(0,255,204,0.6)} }
+  @keyframes introRingIn2 { 0%{opacity:0;border-color:rgba(0,255,204,0)} 100%{opacity:1;border-color:rgba(0,255,204,0.1)} }
+
+  /* Corner brackets around logo */
+  .intro-bracket { position: absolute; z-index: 11; }
+  .intro-bracket-tl { top:-6px;left:-6px; border-top:2px solid #00ffcc; border-left:2px solid #00ffcc; width:18px; height:18px; opacity:0; animation:bracketIn 0.4s 0.8s ease-out forwards; }
+  .intro-bracket-tr { top:-6px;right:-6px; border-top:2px solid #00ffcc; border-right:2px solid #00ffcc; width:18px; height:18px; opacity:0; animation:bracketIn 0.4s 0.9s ease-out forwards; }
+  .intro-bracket-bl { bottom:-6px;left:-6px; border-bottom:2px solid #00ffcc; border-left:2px solid #00ffcc; width:18px; height:18px; opacity:0; animation:bracketIn 0.4s 1.0s ease-out forwards; }
+  .intro-bracket-br { bottom:-6px;right:-6px; border-bottom:2px solid #00ffcc; border-right:2px solid #00ffcc; width:18px; height:18px; opacity:0; animation:bracketIn 0.4s 1.1s ease-out forwards; }
+  @keyframes bracketIn { 0%{opacity:0;transform:scale(1.5)} 100%{opacity:1;transform:scale(1)} }
+
+  /* Logo image */
+  .intro-logo {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    opacity: 0;
+    filter: brightness(0) saturate(0);
+    animation: introLogoIn 1.2s 0.3s ease-out forwards;
+    box-shadow: 0 0 0px rgba(0,255,204,0);
+  }
+  @keyframes introLogoIn {
+    0%   { opacity:0; filter:brightness(0) saturate(0); transform:scale(0.7); box-shadow:0 0 0 rgba(0,255,204,0); }
+    40%  { opacity:1; filter:brightness(1.3) saturate(0.5); transform:scale(1.05); }
+    70%  { filter:brightness(1) saturate(1); transform:scale(0.98); box-shadow:0 0 30px rgba(0,255,204,0.3); }
+    100% { opacity:1; filter:brightness(1) saturate(1); transform:scale(1); box-shadow:0 0 20px rgba(0,255,204,0.15); }
+  }
+
+  /* Glitch flash on logo */
+  .intro-logo-wrap::after {
+    content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none; z-index:12;
+    background:rgba(0,255,204,0); opacity:0;
+    animation: introLogoFlash 0.12s 1.2s ease-out forwards;
+  }
+  @keyframes introLogoFlash {
+    0%{opacity:0.6;background:rgba(0,255,204,0.2)} 100%{opacity:0;background:rgba(0,255,204,0)}
+  }
+
+  /* Text elements */
+  .intro-text-line {
+    position: relative; z-index: 10;
+    font-family: 'Noto Serif JP', serif;
+    color: #00ffcc;
+    letter-spacing: 0.3em;
+    opacity: 0;
+    overflow: hidden;
+  }
+  .intro-title {
+    font-size: clamp(20px, 5.5vw, 32px); font-weight: 900;
+    text-shadow: 0 0 15px rgba(0,255,204,0.5);
+    animation: introTextIn 0.8s 1.4s ease-out forwards;
+  }
+  .intro-subtitle {
+    font-size: clamp(10px, 2.8vw, 14px); font-weight: 700;
+    color: rgba(0,255,204,0.45);
+    letter-spacing: 0.4em;
+    margin-top: 6px;
+    animation: introTextIn 0.8s 1.7s ease-out forwards;
+  }
+  .intro-tagline {
+    font-size: clamp(8px, 2vw, 11px);
+    color: rgba(0,255,204,0.25);
+    letter-spacing: 0.2em;
+    margin-top: 12px;
+    font-family: 'Courier New', monospace;
+    animation: introTextIn 0.6s 2.0s ease-out forwards;
+  }
+  @keyframes introTextIn {
+    0%   { opacity:0; transform:translateY(12px); filter:blur(4px); }
+    100% { opacity:1; transform:translateY(0); filter:blur(0); }
+  }
+
+  /* Horizontal line decoration */
+  .intro-hline {
+    width: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, #00ffcc, transparent);
+    margin: 16px auto 0;
+    z-index: 10; position: relative;
+    animation: introHLineIn 0.6s 2.2s ease-out forwards;
+  }
+  @keyframes introHLineIn { 0%{width:0;opacity:0} 100%{width:180px;opacity:1} }
+
+  /* Loading dots / status */
+  .intro-status {
+    position: relative; z-index: 10;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    color: rgba(0,255,204,0.3);
+    letter-spacing: 2px;
+    margin-top: 20px;
+    opacity: 0;
+    animation: introTextIn 0.5s 2.5s ease-out forwards;
+  }
+  .intro-status-dot {
+    display: inline-block;
+    animation: introDots 1.5s 2.5s ease-in-out infinite;
+  }
+  @keyframes introDots {
+    0%,100%{opacity:0.2} 50%{opacity:1}
+  }
+
+  /* Particle burst */
+  .intro-particle {
+    position: absolute; width: 2px; height: 2px; border-radius: 50%;
+    background: #00ffcc; pointer-events: none; z-index: 5; opacity: 0;
+  }
+
   /* Audio start overlay */
   .audio-prompt {
     position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.92);
@@ -296,8 +468,34 @@
 
 <link rel="preload" href="ghost.png" as="image">
 
+<!-- ============================================================
+     INTRO SEQUENCE
+     ============================================================ -->
+<div class="intro-overlay" id="introOverlay">
+  <div class="intro-scanlines"></div>
+  <div class="intro-grid"></div>
+
+  <div class="intro-logo-wrap">
+    <div class="intro-ring"></div>
+    <div class="intro-ring-2"></div>
+    <div class="intro-bracket intro-bracket-tl"></div>
+    <div class="intro-bracket intro-bracket-tr"></div>
+    <div class="intro-bracket intro-bracket-bl"></div>
+    <div class="intro-bracket intro-bracket-br"></div>
+    <img src="icon_rikeoka.png" class="intro-logo" alt="">
+  </div>
+
+  <div class="intro-text-line intro-title">理系のオカルト研</div>
+  <div class="intro-text-line intro-subtitle">PARANORMAL RESEARCH LAB</div>
+  <div class="intro-hline"></div>
+  <div class="intro-text-line intro-tagline">MAGNETIC ANOMALY DETECTION SYSTEM</div>
+  <div class="intro-status">
+    INITIALIZING<span class="intro-status-dot">...</span>
+  </div>
+</div>
+
 <!-- Audio start overlay -->
-<div class="audio-prompt" id="audioPrompt">
+<div class="audio-prompt" id="audioPrompt" style="display:none;">
   <div class="audio-prompt-icon">🕯️</div>
   <div class="audio-prompt-text">画面をタップして開始</div>
   <div class="audio-prompt-sub">音声が流れます</div>
@@ -359,6 +557,242 @@
 </div>
 
 <script>
+// ============================================================
+//  INTRO SEQUENCE
+// ============================================================
+(function runIntro(){
+  var overlay = document.getElementById('introOverlay');
+  var introAudioCtx = null;
+
+  function initIntroAudio(){
+    try {
+      introAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(introAudioCtx.state === 'suspended') introAudioCtx.resume();
+    } catch(e){}
+  }
+
+  // Deep sub-bass boot-up rumble (0.0s)
+  function playBootRumble(){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(30, now);
+    osc.frequency.exponentialRampToValueAtTime(80, now + 1.5);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.35, now + 0.3);
+    gain.gain.linearRampToValueAtTime(0.15, now + 1.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+    osc.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 2.0);
+    var bufSize = introAudioCtx.sampleRate * 2;
+    var buf = introAudioCtx.createBuffer(1, bufSize, introAudioCtx.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<bufSize;i++) data[i] = (Math.random()*2-1);
+    var noiseSrc = introAudioCtx.createBufferSource();
+    noiseSrc.buffer = buf;
+    var noiseFilter = introAudioCtx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(200, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(2000, now + 1.0);
+    noiseFilter.Q.value = 1.5;
+    var noiseGain = introAudioCtx.createGain();
+    noiseGain.gain.setValueAtTime(0, now);
+    noiseGain.gain.linearRampToValueAtTime(0.06, now + 0.2);
+    noiseGain.gain.linearRampToValueAtTime(0.03, now + 1.0);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+    noiseSrc.connect(noiseFilter); noiseFilter.connect(noiseGain);
+    noiseGain.connect(introAudioCtx.destination);
+    noiseSrc.start(now); noiseSrc.stop(now + 2.0);
+  }
+
+  // Ring spin-up tone (0.2s)
+  function playRingSpin(){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(120, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 1.5);
+    var filter = introAudioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, now);
+    filter.frequency.exponentialRampToValueAtTime(1200, now + 1.5);
+    filter.Q.value = 5;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.3);
+    gain.gain.linearRampToValueAtTime(0.05, now + 1.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+    osc.connect(filter); filter.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 1.8);
+  }
+
+  // Bracket snap clicks (0.8s-1.1s)
+  function playBracketClick(delay){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime + delay;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(3000, now);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.03);
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+    osc.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 0.08);
+  }
+
+  // Particle burst impact (1.2s)
+  function playBurstImpact(){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+    gain.gain.setValueAtTime(0.4, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 0.4);
+    var bufSize = introAudioCtx.sampleRate;
+    var buf = introAudioCtx.createBuffer(1, bufSize, introAudioCtx.sampleRate);
+    var data = buf.getChannelData(0);
+    for(var i=0;i<bufSize;i++) data[i] = (Math.random()*2-1);
+    var src = introAudioCtx.createBufferSource();
+    src.buffer = buf;
+    var filt = introAudioCtx.createBiquadFilter();
+    filt.type = 'highpass';
+    filt.frequency.setValueAtTime(4000, now);
+    filt.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+    var ng = introAudioCtx.createGain();
+    ng.gain.setValueAtTime(0.2, now);
+    ng.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    src.connect(filt); filt.connect(ng); ng.connect(introAudioCtx.destination);
+    src.start(now); src.stop(now + 0.5);
+  }
+
+  // Text reveal tones (ascending digital chirps)
+  function playTextTone(delay, freq){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime + delay;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.setValueAtTime(freq * 1.02, now + 0.05);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    osc.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 0.3);
+    var osc2 = introAudioCtx.createOscillator();
+    var gain2 = introAudioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq * 1.5;
+    gain2.gain.setValueAtTime(0, now);
+    gain2.gain.linearRampToValueAtTime(0.04, now + 0.02);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc2.connect(gain2); gain2.connect(introAudioCtx.destination);
+    osc2.start(now); osc2.stop(now + 0.25);
+  }
+
+  // Horizontal line sweep (2.2s)
+  function playLineSweep(){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime;
+    var osc = introAudioCtx.createOscillator();
+    var gain = introAudioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2000, now);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.connect(gain); gain.connect(introAudioCtx.destination);
+    osc.start(now); osc.stop(now + 0.5);
+  }
+
+  // Final ambient drone (2.5s)
+  function playAmbientDrone(){
+    if(!introAudioCtx) return;
+    var now = introAudioCtx.currentTime;
+    [55, 65.4, 82.4].forEach(function(freq, i){
+      var osc = introAudioCtx.createOscillator();
+      var gain = introAudioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.06 - i*0.015, now + 0.3);
+      gain.gain.linearRampToValueAtTime(0.04 - i*0.01, now + 1.0);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.8);
+      osc.connect(gain); gain.connect(introAudioCtx.destination);
+      osc.start(now); osc.stop(now + 1.8);
+    });
+  }
+
+  // --- SCHEDULE ALL SOUNDS ---
+  overlay.addEventListener('click', function introTap(){
+    overlay.removeEventListener('click', introTap);
+    initIntroAudio();
+    if(!introAudioCtx) return;
+    playBootRumble();
+    setTimeout(playRingSpin, 200);
+    playBracketClick(0.8);
+    playBracketClick(0.9);
+    playBracketClick(1.0);
+    playBracketClick(1.1);
+    setTimeout(playBurstImpact, 1200);
+    playTextTone(1.4, 660);
+    playTextTone(1.7, 880);
+    playTextTone(2.0, 1100);
+    setTimeout(playLineSweep, 2200);
+    setTimeout(playAmbientDrone, 2500);
+  }, {once:true});
+
+  overlay.style.cursor = 'pointer';
+
+  // Spawn particle burst at 1.2s
+  setTimeout(function(){
+    for(var i=0;i<20;i++){
+      var p = document.createElement('div');
+      p.className = 'intro-particle';
+      var angle = (Math.PI*2/20)*i + (Math.random()-0.5)*0.3;
+      var dist = 80 + Math.random()*60;
+      var cx = window.innerWidth/2;
+      var cy = window.innerHeight/2 - 40;
+      p.style.left = cx + 'px';
+      p.style.top = cy + 'px';
+      p.style.opacity = '0';
+      overlay.appendChild(p);
+      (function(el, a, d){
+        setTimeout(function(){
+          el.style.transition = 'all 0.8s ease-out';
+          el.style.opacity = '0.8';
+          el.style.left = (cx + Math.cos(a)*d) + 'px';
+          el.style.top = (cy + Math.sin(a)*d) + 'px';
+          setTimeout(function(){
+            el.style.opacity = '0';
+          }, 400);
+        }, 50);
+      })(p, angle, dist);
+    }
+  }, 1200);
+
+  // Dismiss intro after ~4s -> show audio prompt
+  setTimeout(function(){
+    overlay.classList.add('done');
+    document.getElementById('audioPrompt').style.display = 'flex';
+    setTimeout(function(){
+      overlay.style.display = 'none';
+      if(introAudioCtx){
+        setTimeout(function(){ introAudioCtx.close(); introAudioCtx=null; }, 2000);
+      }
+    }, 900);
+  }, 4000);
+})();
+
 // ============================================================
 //  PARTICLES
 // ============================================================
